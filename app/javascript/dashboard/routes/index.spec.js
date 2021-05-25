@@ -17,7 +17,7 @@ jest.mock('../constants', () => {
     get apiUrl() {
       return `${this.APP_BASE_URL}/`;
     },
-    GRAVATAR_URL: 'https://www.gravatar.com/avatar',
+    GRAVATAR_URL: 'https://cdn.v2ex.com/gravatar',
     CHANNELS: {
       FACEBOOK: 'facebook',
     },
