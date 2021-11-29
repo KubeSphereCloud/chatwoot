@@ -1,4 +1,5 @@
 import BaseActionCableConnector from '../../shared/helpers/BaseActionCableConnector';
+import { playNewMessageNotificationInWidget } from 'shared/helpers/AudioNotificationHelper';
 
 class ActionCableConnector extends BaseActionCableConnector {
   constructor(app, pubsubToken) {
@@ -10,6 +11,7 @@ class ActionCableConnector extends BaseActionCableConnector {
       'conversation.typing_off': this.onTypingOff,
       'conversation.status_changed': this.onStatusChange,
       'presence.update': this.onPresenceUpdate,
+      'contact.merged': this.onContactMerge,
     };
   }
 
@@ -18,20 +20,33 @@ class ActionCableConnector extends BaseActionCableConnector {
   };
 
   onMessageCreated = data => {
-    this.app.$store.dispatch('conversation/addMessage', data).then(() => {
-      window.bus.$emit('on-agent-message-recieved');
-    });
+    this.app.$store
+      .dispatch('conversation/addOrUpdateMessage', data)
+      .then(() => {
+        window.bus.$emit('on-agent-message-received');
+      });
+    if (data.sender_type === 'User') {
+      playNewMessageNotificationInWidget();
+    }
   };
 
   onMessageUpdated = data => {
-    this.app.$store.dispatch('conversation/updateMessage', data);
+    this.app.$store.dispatch('conversation/addOrUpdateMessage', data);
   };
 
   onPresenceUpdate = data => {
     this.app.$store.dispatch('agent/updatePresence', data.users);
   };
 
-  onTypingOn = () => {
+  onContactMerge = data => {
+    const { pubsub_token: pubsubToken } = data;
+    ActionCableConnector.refreshConnector(pubsubToken);
+  };
+
+  onTypingOn = data => {
+    if (data.is_private) {
+      return;
+    }
     this.clearTimer();
     this.app.$store.dispatch('conversation/toggleAgentTyping', {
       status: 'on',
@@ -60,17 +75,5 @@ class ActionCableConnector extends BaseActionCableConnector {
     }, 30000);
   };
 }
-
-export const refreshActionCableConnector = pubsubToken => {
-  if (!pubsubToken || window.chatwootPubsubToken === pubsubToken) {
-    return;
-  }
-  window.chatwootPubsubToken = pubsubToken;
-  window.actionCable.disconnect();
-  window.actionCable = new ActionCableConnector(
-    window.WOOT_WIDGET,
-    window.chatwootPubsubToken
-  );
-};
 
 export default ActionCableConnector;

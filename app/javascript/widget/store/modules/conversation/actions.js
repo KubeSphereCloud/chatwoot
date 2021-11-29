@@ -6,24 +6,19 @@ import {
   toggleTyping,
   setUserLastSeenAt,
 } from 'widget/api/conversation';
-import { refreshActionCableConnector } from '../../../helpers/actionCable';
 
-import { createTemporaryMessage, onNewMessageCreated } from './helpers';
+import { createTemporaryMessage, getNonDeletedMessages } from './helpers';
 
 export const actions = {
-  createConversation: async ({ commit }, params) => {
+  createConversation: async ({ commit, dispatch }, params) => {
     commit('setConversationUIFlag', { isCreating: true });
     try {
       const { data } = await createConversationAPI(params);
-      const {
-        contact: { pubsub_token: pubsubToken },
-        messages,
-      } = data;
+      const { messages } = data;
       const [message = {}] = messages;
       commit('pushMessageToConversation', message);
-      refreshActionCableConnector(pubsubToken);
+      dispatch('conversationAttributes/getAttributes', {}, { root: true });
     } catch (error) {
-      console.log(error);
       // Ignore error
     } finally {
       commit('setConversationUIFlag', { isCreating: false });
@@ -59,12 +54,12 @@ export const actions = {
       // Show error
     }
   },
-
   fetchOldConversations: async ({ commit }, { before } = {}) => {
     try {
       commit('setConversationListLoading', true);
       const { data } = await getMessagesAPI({ before });
-      commit('setMessagesInConversation', data);
+      const formattedMessages = getNonDeletedMessages({ messages: data });
+      commit('setMessagesInConversation', formattedMessages);
       commit('setConversationListLoading', false);
     } catch (error) {
       commit('setConversationListLoading', false);
@@ -75,12 +70,12 @@ export const actions = {
     commit('clearConversations');
   },
 
-  addMessage: async ({ commit }, data) => {
-    commit('pushMessageToConversation', data);
-    onNewMessageCreated(data);
-  },
-
-  updateMessage({ commit }, data) {
+  addOrUpdateMessage: async ({ commit }, data) => {
+    const { id, content_attributes } = data;
+    if (content_attributes && content_attributes.deleted) {
+      commit('deleteMessage', id);
+      return;
+    }
     commit('pushMessageToConversation', data);
   },
 

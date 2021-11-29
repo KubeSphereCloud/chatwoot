@@ -1,9 +1,5 @@
 export default {
-  APP_BASE_URL: '/',
-  get apiURL() {
-    return `${this.APP_BASE_URL}/`;
-  },
-  GRAVATAR_URL: 'https://cdn.v2ex.com/gravatar/',
+  GRAVATAR_URL: 'https://dn-qiniu-avatar.qbox.me/avatar/',
   ASSIGNEE_TYPE: {
     ME: 'me',
     UNASSIGNED: 'unassigned',
@@ -12,6 +8,9 @@ export default {
   STATUS_TYPE: {
     OPEN: 'open',
     RESOLVED: 'resolved',
-    BOT: 'bot',
+    PENDING: 'pending',
+    SNOOZED: 'snoozed',
+    ALL: 'all',
   },
 };
+export const DEFAULT_REDIRECT_URL = '/app/';

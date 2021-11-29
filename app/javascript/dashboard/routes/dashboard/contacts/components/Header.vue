@@ -3,7 +3,7 @@
     <div class="table-actions-wrap">
       <div class="left-aligned-wrap">
         <h1 class="page-title">
-          {{ $t('CONTACTS_PAGE.HEADER') }}
+          {{ headerTitle ? `#${headerTitle}` : $t('CONTACTS_PAGE.HEADER') }}
         </h1>
       </div>
       <div class="right-aligned-wrap">
@@ -29,9 +29,19 @@
         <woot-button
           color-scheme="success"
           icon="ion-android-add-circle"
+          class="margin-right-small"
+          data-testid="create-new-contact"
           @click="onToggleCreate"
         >
           {{ $t('CREATE_CONTACT.BUTTON_LABEL') }}
+        </woot-button>
+
+        <woot-button
+          color-scheme="info"
+          icon="ion-android-upload"
+          @click="onToggleImport"
+        >
+          {{ $t('IMPORT_CONTACTS.BUTTON_LABEL') }}
         </woot-button>
       </div>
     </div>
@@ -40,8 +50,11 @@
 
 <script>
 export default {
-  components: {},
   props: {
+    headerTitle: {
+      type: String,
+      default: '',
+    },
     searchQuery: {
       type: String,
       default: '',
@@ -58,10 +71,15 @@ export default {
       type: Function,
       default: () => {},
     },
+    onToggleImport: {
+      type: Function,
+      default: () => {},
+    },
   },
   data() {
     return {
       showCreateModal: false,
+      showImportModal: false,
     };
   },
   computed: {
