@@ -1,5 +1,13 @@
 <template>
   <div class="reply-box" :class="replyBoxClass">
+    <banner
+      v-if="showSelfAssignBanner"
+      color-scheme="secondary"
+      :banner-message="$t('CONVERSATION.NOT_ASSIGNED_TO_YOU')"
+      :has-action-button="true"
+      :action-button-label="$t('CONVERSATION.ASSIGN_TO_ME')"
+      @click="onClickSelfAssign"
+    />
     <reply-top-panel
       :mode="replyType"
       :set-reply-mode="setReplyMode"
@@ -22,8 +30,8 @@
       />
       <reply-email-head
         v-if="showReplyHead"
-        :clear-mails="clearMails"
-        @set-emails="setCcEmails"
+        :cc-emails.sync="ccEmails"
+        :bcc-emails.sync="bccEmails"
       />
       <resizable-text-area
         v-if="!showRichContentEditor"
@@ -58,8 +66,26 @@
         :remove-attachment="removeAttachment"
       />
     </div>
+    <div
+      v-if="isSignatureEnabledForInbox"
+      v-tooltip="$t('CONVERSATION.FOOTER.MESSAGE_SIGN_TOOLTIP')"
+      class="message-signature-wrap"
+    >
+      <p
+        v-if="isSignatureAvailable"
+        class="message-signature"
+        v-html="formatMessage(messageSignature)"
+      />
+      <p v-else class="message-signature">
+        {{ $t('CONVERSATION.FOOTER.MESSAGE_SIGNATURE_NOT_CONFIGURED') }}
+        <router-link :to="profilePath">
+          {{ $t('CONVERSATION.FOOTER.CLICK_HERE') }}
+        </router-link>
+      </p>
+    </div>
     <reply-bottom-panel
       :mode="replyType"
+      :inbox="inbox"
       :send-button-text="replyButtonLabel"
       :on-file-upload="onFileUpload"
       :show-file-upload="showFileUpload"
@@ -72,6 +98,7 @@
       :is-format-mode="showRichContentEditor"
       :enable-rich-editor="isRichEditorEnabled"
       :enter-to-send-enabled="enterToSendEnabled"
+      :enable-multiple-file-upload="enableMultipleFileUpload"
       @toggleEnterToSend="toggleEnterToSend"
     />
   </div>
@@ -89,19 +116,25 @@ import AttachmentPreview from 'dashboard/components/widgets/AttachmentsPreview';
 import ReplyTopPanel from 'dashboard/components/widgets/WootWriter/ReplyTopPanel';
 import ReplyEmailHead from './ReplyEmailHead';
 import ReplyBottomPanel from 'dashboard/components/widgets/WootWriter/ReplyBottomPanel';
+import Banner from 'dashboard/components/ui/Banner.vue';
 import { REPLY_EDITOR_MODES } from 'dashboard/components/widgets/WootWriter/constants';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor';
+import messageFormatterMixin from 'shared/mixins/messageFormatterMixin';
 import { checkFileSizeLimit } from 'shared/helpers/FileHelper';
 import { MAXIMUM_FILE_UPLOAD_SIZE } from 'shared/constants/messages';
+import { BUS_EVENTS } from 'shared/constants/busEvents';
 
 import {
   isEscape,
   isEnter,
   hasPressedShift,
+  hasPressedCommandPlusKKey,
 } from 'shared/helpers/KeyboardHelpers';
 import { MESSAGE_MAX_LENGTH } from 'shared/helpers/MessageTypeHelper';
 import inboxMixin from 'shared/mixins/inboxMixin';
 import uiSettingsMixin from 'dashboard/mixins/uiSettings';
+import { DirectUpload } from 'activestorage';
+import { frontendURL } from '../../../helper/URLHelper';
 
 export default {
   components: {
@@ -113,8 +146,15 @@ export default {
     ReplyEmailHead,
     ReplyBottomPanel,
     WootMessageEditor,
+    Banner,
   },
-  mixins: [clickaway, inboxMixin, uiSettingsMixin, alertMixin],
+  mixins: [
+    clickaway,
+    inboxMixin,
+    uiSettingsMixin,
+    alertMixin,
+    messageFormatterMixin,
+  ],
   props: {
     selectedTweet: {
       type: [Object, String],
@@ -141,10 +181,19 @@ export default {
       mentionSearchKey: '',
       hasUserMention: false,
       hasSlashCommand: false,
-      clearMails: false,
+      bccEmails: '',
+      ccEmails: '',
     };
   },
   computed: {
+    ...mapGetters({
+      currentChat: 'getSelectedChat',
+      messageSignature: 'getMessageSignature',
+      currentUser: 'getCurrentUser',
+      globalConfig: 'globalConfig/get',
+      accountId: 'getCurrentAccountId',
+    }),
+
     showRichContentEditor() {
       if (this.isOnPrivateNote) {
         return true;
@@ -159,7 +208,36 @@ export default {
       }
       return false;
     },
-    ...mapGetters({ currentChat: 'getSelectedChat' }),
+    assignedAgent: {
+      get() {
+        return this.currentChat.meta.assignee;
+      },
+      set(agent) {
+        const agentId = agent ? agent.id : 0;
+        this.$store.dispatch('setCurrentChatAssignee', agent);
+        this.$store
+          .dispatch('assignAgent', {
+            conversationId: this.currentChat.id,
+            agentId,
+          })
+          .then(() => {
+            this.showAlert(this.$t('CONVERSATION.CHANGE_AGENT'));
+          });
+      },
+    },
+    showSelfAssignBanner() {
+      if (this.message !== '' && !this.isOnPrivateNote) {
+        if (!this.assignedAgent) {
+          return true;
+        }
+        if (this.assignedAgent.id !== this.currentUser.id) {
+          return true;
+        }
+      }
+
+      return false;
+    },
+
     enterToSendEnabled() {
       return !!this.uiSettings.enter_to_send_enabled;
     },
@@ -187,7 +265,7 @@ export default {
       return this.maxLength - this.message.length;
     },
     isReplyButtonDisabled() {
-      if (this.isATweet && !this.inReplyTo) {
+      if (this.isATweet && !this.inReplyTo && !this.isOnPrivateNote) {
         return true;
       }
 
@@ -281,6 +359,22 @@ export default {
     showReplyHead() {
       return !this.isOnPrivateNote && this.isAnEmailChannel;
     },
+    enableMultipleFileUpload() {
+      return this.isAnEmailChannel || this.isAWebWidgetInbox || this.isAPIInbox;
+    },
+    isSignatureEnabledForInbox() {
+      return !this.isPrivate && this.isAnEmailChannel && this.sendWithSignature;
+    },
+    isSignatureAvailable() {
+      return !!this.messageSignature;
+    },
+    sendWithSignature() {
+      const { send_with_signature: isEnabled } = this.uiSettings;
+      return isEnabled;
+    },
+    profilePath() {
+      return frontendURL(`accounts/${this.accountId}/profile/settings`);
+    },
   },
   watch: {
     currentChat(conversation) {
@@ -353,22 +447,57 @@ export default {
           e.preventDefault();
           this.sendMessage();
         }
+      } else if (hasPressedCommandPlusKKey(e)) {
+        this.openCommandBar();
       }
+    },
+    openCommandBar() {
+      const ninja = document.querySelector('ninja-keys');
+      ninja.open();
     },
     toggleEnterToSend(enterToSendEnabled) {
       this.updateUISettings({ enter_to_send_enabled: enterToSendEnabled });
+    },
+    onClickSelfAssign() {
+      const {
+        account_id,
+        availability_status,
+        available_name,
+        email,
+        id,
+        name,
+        role,
+        avatar_url,
+      } = this.currentUser;
+      const selfAssign = {
+        account_id,
+        availability_status,
+        available_name,
+        email,
+        id,
+        name,
+        role,
+        thumbnail: avatar_url,
+      };
+      this.assignedAgent = selfAssign;
     },
     async sendMessage() {
       if (this.isReplyButtonDisabled) {
         return;
       }
       if (!this.showMentions) {
-        const newMessage = this.message;
+        let newMessage = this.message;
+        if (this.isSignatureEnabledForInbox && this.messageSignature) {
+          newMessage += '\n\n' + this.messageSignature;
+        }
         const messagePayload = this.getMessagePayload(newMessage);
         this.clearMessage();
         try {
-          await this.$store.dispatch('sendMessage', messagePayload);
-          this.$emit('scrollToMessage');
+          await this.$store.dispatch(
+            'createPendingMessageAndSend',
+            messagePayload
+          );
+          bus.$emit(BUS_EVENTS.SCROLL_TO_MESSAGE);
         } catch (error) {
           const errorMessage =
             error?.response?.data?.error ||
@@ -376,7 +505,7 @@ export default {
           this.showAlert(errorMessage);
         }
         this.hideEmojiPicker();
-        this.clearMails = false;
+        this.$emit('update:popoutReplyBox', false);
       }
     },
     replaceText(message) {
@@ -399,7 +528,8 @@ export default {
     clearMessage() {
       this.message = '';
       this.attachedFiles = [];
-      this.clearMails = true;
+      this.ccEmails = '';
+      this.bccEmails = '';
     },
     toggleEmojiPicker() {
       this.showEmojiPicker = !this.showEmojiPicker;
@@ -434,21 +564,30 @@ export default {
       });
     },
     onFileUpload(file) {
+      if (this.globalConfig.directUploadsEnabled) {
+        this.onDirectFileUpload(file);
+      } else {
+        this.onIndirectFileUpload(file);
+      }
+    },
+    onDirectFileUpload(file) {
       if (!file) {
         return;
       }
       if (checkFileSizeLimit(file, MAXIMUM_FILE_UPLOAD_SIZE)) {
-        this.attachedFiles = [];
-        const reader = new FileReader();
-        reader.readAsDataURL(file.file);
-        reader.onloadend = () => {
-          this.attachedFiles.push({
-            currentChatId: this.currentChat.id,
-            resource: file,
-            isPrivate: this.isPrivate,
-            thumb: reader.result,
-          });
-        };
+        const upload = new DirectUpload(
+          file.file,
+          '/rails/active_storage/direct_uploads',
+          null,
+          file.file.name
+        );
+        upload.create((error, blob) => {
+          if (error) {
+            this.showAlert(error);
+          } else {
+            this.attachFile({ file, blob });
+          }
+        });
       } else {
         this.showAlert(
           this.$t('CONVERSATION.FILE_SIZE_LIMIT', {
@@ -457,13 +596,39 @@ export default {
         );
       }
     },
+    onIndirectFileUpload(file) {
+      if (!file) {
+        return;
+      }
+      if (checkFileSizeLimit(file, MAXIMUM_FILE_UPLOAD_SIZE)) {
+        this.attachFile({ file });
+      } else {
+        this.showAlert(
+          this.$t('CONVERSATION.FILE_SIZE_LIMIT', {
+            MAXIMUM_FILE_UPLOAD_SIZE,
+          })
+        );
+      }
+    },
+    attachFile({ blob, file }) {
+      const reader = new FileReader();
+      reader.readAsDataURL(file.file);
+      reader.onloadend = () => {
+        this.attachedFiles.push({
+          currentChatId: this.currentChat.id,
+          resource: blob || file,
+          isPrivate: this.isPrivate,
+          thumb: reader.result,
+          blobSignedId: blob ? blob.signed_id : undefined,
+        });
+      };
+    },
     removeAttachment(itemIndex) {
       this.attachedFiles = this.attachedFiles.filter(
         (item, index) => itemIndex !== index
       );
     },
     getMessagePayload(message) {
-      const [attachment] = this.attachedFiles;
       const messagePayload = {
         conversationId: this.currentChat.id,
         message,
@@ -474,8 +639,15 @@ export default {
         messagePayload.contentAttributes = { in_reply_to: this.inReplyTo };
       }
 
-      if (attachment) {
-        messagePayload.file = attachment.resource.file;
+      if (this.attachedFiles && this.attachedFiles.length) {
+        messagePayload.files = [];
+        this.attachedFiles.forEach(attachment => {
+          if (this.globalConfig.directUploadsEnabled) {
+            messagePayload.files.push(attachment.blobSignedId);
+          } else {
+            messagePayload.files.push(attachment.resource.file);
+          }
+        });
       }
 
       if (this.ccEmails) {
@@ -502,6 +674,25 @@ export default {
 <style lang="scss" scoped>
 .send-button {
   margin-bottom: 0;
+}
+
+.message-signature-wrap {
+  margin: 0 var(--space-normal);
+  padding: var(--space-small);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border: 1px dashed var(--s-100);
+  border-radius: var(--border-radius-small);
+
+  &:hover {
+    background: var(--s-25);
+  }
+}
+
+.message-signature {
+  width: fit-content;
+  margin: 0;
 }
 
 .attachment-preview-box {
@@ -538,6 +729,14 @@ export default {
     bottom: 10px;
     transform: rotate(270deg);
     filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.08));
+  }
+}
+
+.message-signature {
+  margin-bottom: 0;
+
+  ::v-deep p:last-child {
+    margin-bottom: 0;
   }
 }
 </style>

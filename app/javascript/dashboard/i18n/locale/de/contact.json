@@ -24,11 +24,11 @@
         "ERROR": "Labels konnten nicht aktualisiert werden"
       },
       "CONVERSATION": {
-        "TITLE": "Konversationsetiketten",
+        "TITLE": "Konversationslabels",
         "ADD_BUTTON": "Label hinzufügen"
       },
       "LABEL_SELECT": {
-        "TITLE": "Label hinzufügen",
+        "TITLE": "Labels hinzufügen",
         "PLACEHOLDER": "Labels suchen",
         "NO_RESULT": "Keine Labels gefunden"
       }
@@ -36,7 +36,7 @@
     "MERGE_CONTACT": "Kontakte zusammenführen",
     "CONTACT_ACTIONS": "Kontakt-Aktionen",
     "MUTE_CONTACT": "Unterhaltung stummschalten",
-    "UNMUTE_CONTACT": "Unterhaltung entmuten",
+    "UNMUTE_CONTACT": "Unterhaltung entstummen",
     "MUTED_SUCCESS": "Diese Unterhaltung ist für 6 Stunden auf stumm schalten",
     "UNMUTED_SUCCESS": "Diese Unterhaltung ist nicht mehr stumm geschaltet",
     "SEND_TRANSCRIPT": "Transkript senden",
@@ -77,7 +77,7 @@
     "CONFIRM": {
       "TITLE": "Löschung bestätigen",
       "MESSAGE": "Bist du sicher, das du das löschen möchtest?",
-      "PLACE_HOLDER": "Bitte geben Sie {contactName} zur Bestätigung ein",
+      "PLACE_HOLDER": "Bitte {contactName} zur Bestätigung eingeben",
       "YES": "Ja, löschen ",
       "NO": "Nein, behalten "
     },
@@ -88,7 +88,7 @@
   },
   "CONTACT_FORM": {
     "FORM": {
-      "SUBMIT": "Speichern",
+      "SUBMIT": "Einreichen",
       "CANCEL": "Abbrechen",
       "AVATAR": {
         "LABEL": "Kontaktbild"
@@ -103,16 +103,18 @@
       },
       "EMAIL_ADDRESS": {
         "PLACEHOLDER": "Geben Sie die E-Mail-Adresse des Kontakts ein",
-        "LABEL": "E-Mail-Addresse"
+        "LABEL": "E-Mail-Adresse",
+        "DUPLICATE": "Diese E-Mail-Adresse wird bereits für einen anderen Kontakt verwendet."
       },
       "PHONE_NUMBER": {
         "PLACEHOLDER": "Geben Sie die Telefonnummer des Kontakts ein",
         "LABEL": "Telefonnummer",
         "HELP": "Telefonnummer sollte im E.164-Format sein, z. B.: +1415555555 [+][Landesvorwahl][Landesvorwahl][Ortsvorwahl]",
-        "ERROR": "Telefonnummer muss leer sein oder im E.164-Format"
+        "ERROR": "Telefonnummer muss leer sein oder im E.164-Format",
+        "DUPLICATE": "Diese Telefonnummer wird für einen anderen Kontakt verwendet."
       },
       "LOCATION": {
-        "PLACEHOLDER": "Geben Sie den Standort des Kontakts ein",
+        "PLACEHOLDER": "Standort des Kontakts eingeben",
         "LABEL": "Ort"
       },
       "COMPANY_NAME": {
@@ -133,13 +135,12 @@
           "LABEL": "LinkedIn"
         },
         "GITHUB": {
-          "PLACEHOLDER": "Gitub-Benutzernamen eingeben",
+          "PLACEHOLDER": "GitHub-Benutzernamen eingeben",
           "LABEL": "Github"
         }
       }
     },
     "SUCCESS_MESSAGE": "Kontakt erfolgreich gespeichert",
-    "CONTACT_ALREADY_EXIST": "Diese E-Mail-Adresse wird bereits für einen anderen Kontakt verwendet.",
     "ERROR_MESSAGE": "Es ist ein Fehler aufgetreten, bitte versuche es erneut"
   },
   "NEW_CONVERSATION": {
@@ -158,7 +159,7 @@
       "SUBJECT": {
         "LABEL": "Betreff",
         "PLACEHOLDER": "Betreff",
-        "ERROR": "Subject can't be empty"
+        "ERROR": "Betreff darf nicht leer sein"
       },
       "MESSAGE": {
         "LABEL": "Nachricht",
@@ -168,6 +169,7 @@
       "SUBMIT": "Nachricht senden",
       "CANCEL": "Abbrechen",
       "SUCCESS_MESSAGE": "Nachricht gesendet!",
+      "GO_TO_CONVERSATION": "Aussicht",
       "ERROR_MESSAGE": "Senden fehlgeschlagen! Bitte erneut versuchen"
     }
   },
@@ -176,6 +178,9 @@
     "FIELDS": "Kontakt-Felder",
     "SEARCH_BUTTON": "Suchen",
     "SEARCH_INPUT_PLACEHOLDER": "Suche nach Kontakten",
+    "FILTER_CONTACTS": "Filter",
+    "FILTER_CONTACTS_SAVE": "Filter speichern",
+    "FILTER_CONTACTS_DELETE": "Filter löschen",
     "LIST": {
       "LOADING_MESSAGE": "Kontakte werden geladen...",
       "404": "Keine Kontakte entsprechend Deiner Suche gefunden 🔍",
@@ -187,9 +192,9 @@
         "LAST_ACTIVITY": "Letzte Aktivität",
         "COUNTRY": "Land",
         "CITY": "Stadt",
-        "SOCIAL_PROFILES": "Social Profiles",
+        "SOCIAL_PROFILES": "Profile in sozialen Netzwerken",
         "COMPANY": "Firma",
-        "EMAIL_ADDRESS": "E-Mail-Addresse"
+        "EMAIL_ADDRESS": "E-Mail-Adresse"
       },
       "VIEW_DETAILS": "Details anzeigen"
     }
@@ -231,19 +236,19 @@
       "TITLE": "Aktivitäten"
     },
     "BUTTON": {
-      "PILL_BUTTON_NOTES": "notizen",
+      "PILL_BUTTON_NOTES": "Notizen",
       "PILL_BUTTON_EVENTS": "Veranstaltungen",
       "PILL_BUTTON_CONVO": "gespräche"
     }
   },
   "CUSTOM_ATTRIBUTES": {
-    "ADD_BUTTON_TEXT": "Add attributes",
+    "ADD_BUTTON_TEXT": "Attribute hinzufügen",
     "BUTTON": "Eigenes Attribut hinzufügen",
     "NOT_AVAILABLE": "Für diesen Kontakt sind keine benutzerdefinierten Attribute verfügbar.",
     "COPY_SUCCESSFUL": "Der Code wurde erfolgreich in die Zwischenablage kopiert",
     "ACTIONS": {
-      "COPY": "Copy attribute",
-      "DELETE": "Delete attribute",
+      "COPY": "Attribut kopieren",
+      "DELETE": "Attribut löschen",
       "EDIT": "Attribut hinzufügen"
     },
     "ADD": {
@@ -263,27 +268,34 @@
         "PLACEHOLDER": "Bsp.: 11901 "
       },
       "ADD": {
-        "TITLE": "Create new attribute ",
+        "TITLE": "Neues Attribut erstellen ",
         "SUCCESS": "Attribut erfolgreich hinzugefügt",
-        "ERROR": "Unable to add attribute. Please try again later"
+        "ERROR": "Attribut kann nicht hinzugefügt werden. Bitte versuchen Sie es später noch einmal"
       },
       "UPDATE": {
         "SUCCESS": "Attribut erfolgreich aktualisiert",
-        "ERROR": "Unable to update attribute. Please try again later"
+        "ERROR": "Attribut kann nicht aktualisiert werden. Bitte versuchen Sie es später noch einmal"
       },
       "DELETE": {
         "SUCCESS": "Attribut erfolgreich gelöscht",
-        "ERROR": "Unable to delete attribute. Please try again later"
+        "ERROR": "Attribut kann nicht gelöscht werden. Bitte versuchen Sie es später noch einmal"
       },
       "ATTRIBUTE_SELECT": {
-        "TITLE": "Add attributes",
-        "PLACEHOLDER": "Search attributes",
-        "NO_RESULT": "No attributes found"
+        "TITLE": "Attribute hinzufügen",
+        "PLACEHOLDER": "Attribut suchen",
+        "NO_RESULT": "Keine Attribute gefunden"
+      },
+      "ATTRIBUTE_TYPE": {
+        "LIST": {
+          "PLACEHOLDER": "Wert wählen",
+          "SEARCH_INPUT_PLACEHOLDER": "Wert suchen",
+          "NO_RESULT": "Kein Ergebnis gefunden"
+        }
       }
     },
     "VALIDATIONS": {
-      "REQUIRED": "Valid value is required",
-      "INVALID_URL": "Invalid URL"
+      "REQUIRED": "Gültiger Wert ist erforderlich",
+      "INVALID_URL": "Ungültige URL"
     }
   },
   "MERGE_CONTACTS": {

@@ -54,20 +54,7 @@ RSpec.describe Conversation, type: :model do
     it 'runs after_create callbacks' do
       # send_events
       expect(Rails.configuration.dispatcher).to have_received(:dispatch)
-        .with(described_class::CONVERSATION_CREATED, kind_of(Time), conversation: conversation)
-    end
-
-    it 'queues AutoResolveConversationsJob post creation if auto resolve duration present' do
-      account.update(auto_resolve_duration: 30)
-      expect do
-        create(
-          :conversation,
-          account: account,
-          contact: create(:contact, account: account),
-          inbox: inbox,
-          assignee: nil
-        )
-      end.to have_enqueued_job(AutoResolveConversationsJob)
+        .with(described_class::CONVERSATION_CREATED, kind_of(Time), conversation: conversation, notifiable_assignee_change: false)
     end
   end
 
@@ -98,11 +85,25 @@ RSpec.describe Conversation, type: :model do
         label_list: [label.title]
       )
       expect(Rails.configuration.dispatcher).to have_received(:dispatch)
-        .with(described_class::CONVERSATION_RESOLVED, kind_of(Time), conversation: conversation)
+        .with(described_class::CONVERSATION_RESOLVED, kind_of(Time), conversation: conversation, notifiable_assignee_change: true)
       expect(Rails.configuration.dispatcher).to have_received(:dispatch)
-        .with(described_class::CONVERSATION_READ, kind_of(Time), conversation: conversation)
+        .with(described_class::CONVERSATION_READ, kind_of(Time), conversation: conversation, notifiable_assignee_change: true)
       expect(Rails.configuration.dispatcher).to have_received(:dispatch)
-        .with(described_class::ASSIGNEE_CHANGED, kind_of(Time), conversation: conversation)
+        .with(described_class::ASSIGNEE_CHANGED, kind_of(Time), conversation: conversation, notifiable_assignee_change: true)
+      expect(Rails.configuration.dispatcher).to have_received(:dispatch)
+        .with(described_class::CONVERSATION_UPDATED, kind_of(Time), conversation: conversation, notifiable_assignee_change: true)
+    end
+
+    it 'will not run conversation_updated event for empty updates' do
+      conversation.save!
+      expect(Rails.configuration.dispatcher).not_to have_received(:dispatch)
+        .with(described_class::CONVERSATION_UPDATED, kind_of(Time), conversation: conversation, notifiable_assignee_change: true)
+    end
+
+    it 'will not run conversation_updated event for non whitelisted keys' do
+      conversation.update(updated_at: DateTime.now.utc)
+      expect(Rails.configuration.dispatcher).not_to have_received(:dispatch)
+        .with(described_class::CONVERSATION_UPDATED, kind_of(Time), conversation: conversation, notifiable_assignee_change: true)
     end
 
     it 'creates conversation activities' do
@@ -137,18 +138,6 @@ RSpec.describe Conversation, type: :model do
         .to have_enqueued_job(Conversations::ActivityMessageJob)
         .with(conversation2, { account_id: conversation2.account_id, inbox_id: conversation2.inbox_id, message_type: :activity,
                                content: system_resolved_message })
-    end
-
-    it 'does not trigger AutoResolutionJob if conversation reopened and account does not have auto resolve duration' do
-      expect { conversation.update(status: :open) }
-        .not_to have_enqueued_job(AutoResolveConversationsJob).with(conversation.id)
-    end
-
-    it 'does trigger AutoResolutionJob if conversation reopened and account has auto resolve duration' do
-      account.update(auto_resolve_duration: 40)
-      conversation.resolved!
-      conversation.reload.update(status: :open)
-      expect(AutoResolveConversationsJob).to have_been_enqueued.with(conversation.id)
     end
   end
 
@@ -340,6 +329,30 @@ RSpec.describe Conversation, type: :model do
     end
   end
 
+  describe 'recent_messages' do
+    subject(:recent_messages) { conversation.recent_messages }
+
+    let(:conversation) { create(:conversation, agent_last_seen_at: 1.hour.ago) }
+    let(:message_params) do
+      {
+        conversation: conversation,
+        account: conversation.account,
+        inbox: conversation.inbox,
+        sender: conversation.assignee
+      }
+    end
+    let!(:messages) do
+      create_list(:message, 10, **message_params) do |message, i|
+        message.created_at = i.minute.ago
+      end
+    end
+
+    it 'returns upto 5 recent messages' do
+      expect(recent_messages.length).to be < 6
+      expect(recent_messages).to eq messages.last(5)
+    end
+  end
+
   describe 'unread_incoming_messages' do
     subject(:unread_incoming_messages) { conversation.unread_incoming_messages }
 
@@ -387,6 +400,7 @@ RSpec.describe Conversation, type: :model do
         can_reply: true,
         channel: 'Channel::WebWidget',
         snoozed_until: conversation.snoozed_until,
+        custom_attributes: conversation.custom_attributes,
         contact_last_seen_at: conversation.contact_last_seen_at.to_i,
         agent_last_seen_at: conversation.agent_last_seen_at.to_i,
         unread_count: 0

@@ -102,7 +102,7 @@ gem 'sentry-ruby'
 gem 'sentry-sidekiq'
 
 ##-- background job processing --##
-gem 'sidekiq'
+gem 'sidekiq', '~> 6.4.0'
 # We want cron jobs
 gem 'sidekiq-cron'
 
@@ -120,6 +120,10 @@ gem 'maxminddb'
 gem 'hairtrigger'
 
 gem 'procore-sift'
+
+# parse email
+gem 'email_reply_trimmer'
+gem 'html2text'
 
 group :production, :staging do
   # we dont want request timing out in development while using byebug

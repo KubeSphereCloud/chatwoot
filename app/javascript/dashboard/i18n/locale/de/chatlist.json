@@ -4,9 +4,10 @@
     "LOAD_MORE_CONVERSATIONS": "Laden Sie weitere Gespräche",
     "EOF": "Alle Gespräche geladen 🎉",
     "LIST": {
-      "404": "In dieser Gruppe gibt es keine aktiven Gespräche."
+      "404": "In dieser Gruppe existieren keine aktiven Gespräche."
     },
     "TAB_HEADING": "Gespräche",
+    "MENTION_HEADING": "Erwähnungen",
     "SEARCH": {
       "INPUT": "Suche nach Personen, Chats, gespeicherten Antworten .."
     },
@@ -40,7 +41,7 @@
     ],
     "CHAT_STATUS_FILTER_ITEMS": {
       "open": {
-        "TEXT": "Offen"
+        "TEXT": "Öffnen"
       },
       "resolved": {
         "TEXT": "Gelöst"
@@ -54,27 +55,21 @@
     },
     "ATTACHMENTS": {
       "image": {
-        "ICON": "ion-image",
         "CONTENT": "Bildnachricht"
       },
       "audio": {
-        "ICON": "ion-volume-high",
         "CONTENT": "Audio-Nachricht"
       },
       "video": {
-        "ICON": "ion-ios-videocam",
         "CONTENT": "Videonachricht"
       },
       "file": {
-        "ICON": "ion-document",
         "CONTENT": "Dateianhang"
       },
       "location": {
-        "ICON": "ion-ios-location",
         "CONTENT": "Ort"
       },
       "fallback": {
-        "ICON": "ion-link",
         "CONTENT": "hat eine URL geteilt"
       }
     },

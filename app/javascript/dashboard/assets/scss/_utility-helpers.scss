@@ -6,6 +6,10 @@
   margin-right: var(--space-smaller);
 }
 
+.margin-left-minus-slab {
+  margin-left: var(--space-minus-slab);
+}
+
 .fs-small {
   font-size: var(--font-size-small);
 }
@@ -49,4 +53,10 @@
 
 .text-y-800 {
   color: var(--y-800);
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

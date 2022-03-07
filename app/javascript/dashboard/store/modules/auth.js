@@ -47,8 +47,11 @@ export const getters = {
     return currentAccount.availability;
   },
 
-  getCurrentAccountId(_state) {
-    return _state.currentAccountId;
+  getCurrentAccountId(_, __, rootState) {
+    if (rootState.route.params && rootState.route.params.accountId) {
+      return Number(rootState.route.params.accountId);
+    }
+    return null;
   },
 
   getCurrentRole(_state) {
@@ -61,6 +64,25 @@ export const getters = {
 
   getCurrentUser(_state) {
     return _state.currentUser;
+  },
+
+  getMessageSignature(_state) {
+    const { message_signature: messageSignature } = _state.currentUser;
+
+    return messageSignature || '';
+  },
+
+  getCurrentAccount(_state) {
+    const { accounts = [] } = _state.currentUser;
+    const [currentAccount = {}] = accounts.filter(
+      account => account.id === _state.currentAccountId
+    );
+    return currentAccount || {};
+  },
+
+  getUserAccounts(_state) {
+    const { accounts = [] } = _state.currentUser;
+    return accounts;
   },
 };
 
@@ -115,6 +137,15 @@ export const actions = {
       commit(types.default.SET_CURRENT_USER);
     } catch (error) {
       throw error;
+    }
+  },
+
+  deleteAvatar: async ({ commit }) => {
+    try {
+      await authAPI.deleteAvatar();
+      commit(types.default.SET_CURRENT_USER);
+    } catch (error) {
+      // Ignore error
     }
   },
 

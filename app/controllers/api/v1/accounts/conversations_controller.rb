@@ -61,6 +61,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
     else
       @status = @conversation.toggle_status
     end
+    assign_conversation if @conversation.status == 'open' && Current.user.is_a?(User) && Current.user&.agent?
   end
 
   def toggle_typing_status
@@ -74,9 +75,10 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   def update_last_seen
-    @conversation.agent_last_seen_at = DateTime.now.utc
-    @conversation.assignee_last_seen_at = DateTime.now.utc if assignee?
-    @conversation.save!
+    # rubocop:disable Rails/SkipsModelValidations
+    @conversation.update_column(:agent_last_seen_at, DateTime.now.utc)
+    @conversation.update_column(:assignee_last_seen_at, DateTime.now.utc) if assignee?
+    # rubocop:enable Rails/SkipsModelValidations
   end
 
   def custom_attributes
@@ -90,6 +92,11 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
     status = params[:status] == 'bot' ? 'pending' : params[:status]
     @conversation.status = status
     @conversation.snoozed_until = parse_date_time(params[:snoozed_until].to_s) if params[:snoozed_until]
+  end
+
+  def assign_conversation
+    @agent = Current.account.users.find(current_user.id)
+    @conversation.update_assignee(@agent)
   end
 
   def trigger_typing_event(event, is_private)

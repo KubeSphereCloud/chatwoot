@@ -387,6 +387,18 @@ RSpec.describe 'Contacts API', type: :request do
         expect(json_response['payload']['contact']['custom_attributes']).to eq({ 'test' => 'test', 'test1' => 'test1' })
       end
 
+      it 'does not create the contact' do
+        valid_params[:contact][:name] = 'test' * 999
+
+        post "/api/v1/accounts/#{account.id}/contacts", headers: admin.create_new_auth_token,
+                                                        params: valid_params
+
+        expect(response).to have_http_status(:unprocessable_entity)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response['message']).to eq('Name is too long (maximum is 255 characters)')
+      end
+
       it 'creates the contact inbox when inbox id is passed' do
         expect do
           post "/api/v1/accounts/#{account.id}/contacts", headers: admin.create_new_auth_token,
@@ -448,7 +460,19 @@ RSpec.describe 'Contacts API', type: :request do
               as: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)['contact']['id']).to eq(other_contact.id)
+        expect(JSON.parse(response.body)['attributes']).to include('email')
+      end
+
+      it 'prevents updating with an existing phone number' do
+        other_contact = create(:contact, account: account, phone_number: '+12000000')
+
+        patch "/api/v1/accounts/#{account.id}/contacts/#{contact.id}",
+              headers: admin.create_new_auth_token,
+              params: valid_params[:contact].merge({ phone_number: other_contact.phone_number }),
+              as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(JSON.parse(response.body)['attributes']).to include('phone_number')
       end
     end
   end
